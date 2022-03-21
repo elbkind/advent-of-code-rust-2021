@@ -1,8 +1,59 @@
+mod day_four;
 mod day_three;
 
 #[cfg(test)]
 mod tests {
+    use super::day_four;
     use super::day_three;
+
+    #[test]
+    fn day_four_first_tools() {
+        let mut rows: Vec<i32> = vec![
+            1, 2, 3, 4, 5, 99, -1, -1, -1, -1, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5,
+        ];
+
+        assert_eq!(day_four::first::check_completion(&rows, 5), false);
+        assert_eq!(
+            day_four::first::mark_drawn_number(&mut rows, 99),
+            Some(vec![5])
+        );
+        assert_eq!(day_four::first::check_completion(&rows, 5), true);
+
+        let foo: Vec<i32> = vec![
+            1, 2, 3, 4, 5, -1, -1, -1, -1, -1, 2, -1, -1, -1, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2,
+            3, 4, 5,
+        ];
+
+        assert_eq!(
+            [0, 1, 2, 3, 4]
+                .iter()
+                .map(|column| foo[0 + 1 * 5 + column])
+                .all(|cell| cell == -1),
+            true
+        );
+    }
+
+    #[test]
+    fn day_four_first() {
+        let example =
+            "7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1\n\n22 13 17 11  0\n8  2 23  4 24\n21  9 14 16  7\n6 10  3 18  5\n1 12 20 15 19\n\n 3 15  0  2 22\n 9 18 13 17  5\n19  8  7 25 23\n20 11 10 24  4\n14 21 16 12  6\n\n14 21 17 24  4\n10 16 15  9 19\n18  8 23 26 20\n22 11 13  6  5\n 2  0 12  3  7";
+
+        assert_eq!(day_four::first::compute_winning_board(example, false), 4512);
+
+        let input = std::fs::read_to_string("./src/day_four.txt").expect("Failed to read file");
+        assert_eq!(day_four::first::compute_winning_board(&input, false), 8442);
+    }
+
+    #[test]
+    fn day_four_second() {
+        let example =
+            "7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1\n\n22 13 17 11  0\n8  2 23  4 24\n21  9 14 16  7\n6 10  3 18  5\n1 12 20 15 19\n\n 3 15  0  2 22\n 9 18 13 17  5\n19  8  7 25 23\n20 11 10 24  4\n14 21 16 12  6\n\n14 21 17 24  4\n10 16 15  9 19\n18  8 23 26 20\n22 11 13  6  5\n 2  0 12  3  7";
+
+        assert_eq!(day_four::first::compute_winning_board(example, true), 1924);
+
+        let input = std::fs::read_to_string("./src/day_four.txt").expect("Failed to read file");
+        assert_eq!(day_four::first::compute_winning_board(&input, true), 8442);
+    }
 
     #[test]
     fn day_three_first() {
