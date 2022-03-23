@@ -1,70 +1,54 @@
 pub mod first {
-
-    #[allow(dead_code)]
-    fn print_state(cells: &Vec<i32>) {
-        for index in 0..cells.len() {
-            let cell = cells[index];
-            if index % 5 == 0 {
-                if cell != -1 {
-                    println!("{:>3}", cell);
-                } else {
-                    println!("   ");
-                }
-
-                if index != 0 && index % 25 == 0 {
-                    println!("##########")
-                }
-            } else {
-                if cell != -1 {
-                    print!("{:>3}", cell);
-                } else {
-                    print!("   ");
-                }
-            }
-        }
-
-        println!();
+    struct Board {
+        rows: Vec<Vec<i32>>,
+        is_complete: bool,
+        solution: usize,
     }
 
-    pub fn mark_drawn_number(cells: &mut Vec<i32>, draw: u32) -> Option<Vec<usize>> {
-        let mut result: Vec<usize> = Vec::new();
-        for index in 0..cells.len() {
-            if cells[index] == draw.try_into().unwrap() {
-                cells[index] = -1;
-                result.push(index.try_into().unwrap());
+    impl Board {
+        pub fn mark_drawn_number(&mut self, draw: usize) -> bool {
+            for row_index in 0..5 {
+                for column_index in 0..5 {
+                    if self.rows[row_index][column_index] == (draw as i32) {
+                        self.rows[row_index][column_index] = -1;
+
+                        if self.is_column_complete(column_index) || self.is_row_complete(row_index)
+                        {
+                            self.is_complete = true;
+                            self.solution = self.compute_solution(draw);
+                        }
+
+                        return self.is_complete;
+                    }
+                }
             }
+
+            false
         }
 
-        if result.len() > 0 {
-            return Some(result);
+        fn is_row_complete(&self, row_index: usize) -> bool {
+            self.rows[row_index].iter().all(|cell| *cell == -1)
         }
 
-        None
-    }
-
-    // 27, board 1, row 0, cell 2
-    // 46 board 1, row 4 cell 1
-    pub fn check_completion(cells: &Vec<i32>, index: usize) -> bool {
-        let board_index: usize = index / 25;
-        let position_in_board = index % 25;
-
-        let row: usize = position_in_board / 5;
-        let column = position_in_board % 5;
-
-        let board_offset = board_index * 25;
-
-        if [0, 1, 2, 3, 4]
-            .iter()
-            .map(|column| cells[board_offset + row * 5 + column])
-            .all(|cell| cell == -1)
-        {
-            return true;
+        fn is_column_complete(&self, column_index: usize) -> bool {
+            self.rows.iter().all(|row| row[column_index] == -1)
         }
 
-        [0, 1, 2, 3, 4]
-            .iter()
-            .map(|row| cells[board_offset + row * 5 + column])
-            .all(|cell| cell == -1)
+        pub fn compute_solution(&self, draw: usize) -> usize {
+            let sum = self
+                .rows
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .filter(|cell| **cell > -1)
+                        .fold(0, |col_acc, column| {
+                            return col_acc + (*column as usize);
+                        })
+                })
+                .fold(0, |acc, sum| acc + sum);
+
+            sum * draw
+        }
     }
 
     fn string_to_cells(line: &str) -> Vec<i32> {
@@ -74,13 +58,14 @@ pub mod first {
             .collect()
     }
 
-    fn setup(input: &str) -> (Vec<u32>, Vec<i32>) {
+    fn setup(input: &str) -> (Vec<usize>, Vec<Board>) {
+        let mut boards: Vec<Board> = Vec::new();
         let mut cells: Vec<i32> = Vec::new();
         let lines: Vec<String> = input.lines().map(str::to_string).collect();
 
         let mut iterator = lines.iter();
 
-        let draws: Vec<u32> = iterator
+        let draws: Vec<usize> = iterator
             .next()
             .expect("expected line with draws")
             .split(',')
@@ -97,59 +82,43 @@ pub mod first {
             }
         });
 
-        (draws, cells)
+        for board_index in 0..cells.len() / 25 {
+            let mut board: Vec<Vec<i32>> = Vec::new();
+            let offset = board_index * 25;
+            for row_index in 0..5 {
+                let start = offset + row_index * 5;
+                let end = offset + row_index * 5 + 5;
+                board.push(Vec::from_iter(cells[start..end].iter().cloned()));
+            }
+
+            boards.push(Board {
+                rows: board,
+                is_complete: false,
+                solution: 0,
+            });
+        }
+
+        (draws, boards)
     }
 
-    fn find_complete_board(cells: &mut Vec<i32>, draws: Vec<u32>, last: bool) -> (usize, usize) {
-        let mut win_board_counter = 0;
+    #[allow(dead_code)]
+    pub fn compute_winning_board(input: &str, use_last_complete_board: bool) -> usize {
+        let (draws, mut boards) = setup(input);
 
-        for draw_index in 0..draws.len() {
-            if draw_index < 4 {
-                let _drop_result = mark_drawn_number(cells, draws[draw_index]);
-            } else {
-                let draw = draws[draw_index];
+        let mut last_complete_board: i32 = -1;
 
-                match mark_drawn_number(cells, draw) {
-                    None => (),
-                    Some(matches) => {
-                        for match_index in 0..matches.len() {
-                            let position = matches[match_index];
-
-                            if check_completion(&cells, position) {
-                                if !last {
-                                    return (draw as usize, position);
-                                }
-                                win_board_counter = win_board_counter + 1;
-                                let is_last_board = win_board_counter == cells.len() / 25;
-
-                                if is_last_board {
-                                    return (draw as usize, position);
-                                }
-                            }
-                        }
+        for draw in draws {
+            for (index, board) in boards.iter_mut().enumerate() {
+                if !board.is_complete && board.mark_drawn_number(draw) {
+                    if !use_last_complete_board {
+                        return board.solution;
                     }
+
+                    last_complete_board = index as i32;
                 }
             }
         }
 
-        (0, 0) // wont happen
-    }
-
-    #[allow(dead_code)]
-    pub fn compute_winning_board(input: &str, last: bool) -> usize {
-        let (draws, mut cells) = setup(input);
-
-        let (draw, hit) = find_complete_board(&mut cells, draws, last);
-
-        let board_index = hit / 25;
-        let offset = board_index * 25;
-
-        let sum_unmarked = &cells[offset..offset + 25]
-            .iter()
-            .filter(|entry| **entry >= 0)
-            .fold(0, |acc, item| acc + (*item as usize));
-
-        println!("{} {} {} {}", draw, sum_unmarked, draw, hit);
-        draw * sum_unmarked
+        boards[last_complete_board as usize].solution
     }
 }
